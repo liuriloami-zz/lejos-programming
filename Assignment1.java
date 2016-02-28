@@ -19,9 +19,12 @@ public class Assignment1 {
             processSound();
         }
 
+        // TODO!
         // State 5: Move forward until detecting a hard surface underneath
-        // State 6: Turn 90 degrees to the left
 
+        // State 6: Turn 90 degrees to the left
+        pilot.rotate(-180);
+        
         // State 7: Move forward until a hard surface is detected by sonar at less than 25 cm distante
         UltrasonicSensor ultrasonicSensor = new UltrasonicSensor(SensorPort.S2);
         DifferentialPilot pilot = new DifferentialPilor(2.1f, 2.1f, Motor.A, Motor.B, true);
