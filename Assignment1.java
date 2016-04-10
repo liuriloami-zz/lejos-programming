@@ -1,8 +1,18 @@
+/*
+For whom it may concern,
+We are sorry for the delay submiting this assignment. We finish it yesterday on the lab, but we completely forgot to submit it. 
+
+Group B6:
+Liuri Loami Ruyz Jorge - D14128549
+Matheus Connolyn Quirino Santos - D14128350 
+*/
+
 import lejos.nxt.*;
 import lejos.robotics.navigation.*;
 import java.lang.Math;
 import lejos.robotics.subsumption.*;
 
+//Print 'Assignment 1'
 class PrintAssignment  implements Behavior {
    private boolean suppressed = false;
    private boolean firstExec = true;
@@ -23,6 +33,7 @@ class PrintAssignment  implements Behavior {
    }
 }
 
+//Wait for button press, then clear the screen
 class ClearScreen  implements Behavior {
    private boolean suppressed = false;
    
@@ -42,6 +53,7 @@ class ClearScreen  implements Behavior {
    }
 }
 
+//Wait for claps, then print claps and go forward
 class WaitClaps implements Behavior {
 	private boolean suppressed = false;
 	private SoundSensor soundSensor;
@@ -69,6 +81,8 @@ class WaitClaps implements Behavior {
 	}
 }
 
+
+//Wait for light surface, then rotate and go forward
 class LightSurfaceUnderneath  implements Behavior {
 	private boolean suppressed = false;
 	private LightSensor lightSensor;
@@ -96,6 +110,7 @@ class LightSurfaceUnderneath  implements Behavior {
 	}
 }
 
+//Wait for near obstacle, then execute some rotates and moves
 class SonarHardSurface  implements Behavior {
 	private boolean suppressed = false;
 	private UltrasonicSensor ultrasonicSensor;
@@ -125,6 +140,7 @@ class SonarHardSurface  implements Behavior {
 	}
 }
 
+//Wait for touch sensor pressed, then stop
 class TouchStop  implements Behavior {
 	private boolean suppressed = false;
    private boolean firstExec = true;
@@ -157,6 +173,8 @@ class TouchStop  implements Behavior {
 	
 public class Assignment1 {
     public static void main (String[] args) {
+    
+        //Sensors
         SoundSensor soundSensor = new SoundSensor(SensorPort.S1);
         DifferentialPilot pilot = new DifferentialPilot(2.25f, 4.25f, Motor.A, Motor.B, true);
 		UltrasonicSensor ultrasonicSensor = new UltrasonicSensor(SensorPort.S2);
@@ -168,6 +186,7 @@ public class Assignment1 {
 			Thread.sleep(1000);
 		} catch (Exception e){}
 		
+		//Behaviours
 		Behavior b0 = new PrintAssignment();
 		Behavior b1 = new ClearScreen();
 		Behavior b2 = new WaitClaps(soundSensor, pilot);
