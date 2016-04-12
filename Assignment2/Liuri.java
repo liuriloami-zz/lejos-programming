@@ -6,13 +6,14 @@ Matheus Connolyn Quirino Santos - D14128350
 
 import lejos.nxt.*;
 import lejos.robotics.navigation.*;
+import lejos.robotics.subsumption.*;
 
 class MultableInt {
     private int value;
     public int getValue() {
         return value;
     }
-    public int setValue(int value) {
+    public void setValue(int value) {
         this.value = value;
     }
 }
@@ -25,7 +26,7 @@ class StateMachine implements Behavior {
     private int state = 0, count = 0;
     private MultableInt dir, room_x, room_y;
 
-    public Behaviour1(DifferentialPilot pilot, UltrasonicSensor ultrasonicSensor, MultableInt dir, MultableInt room_x, MultableInt room_y) {
+    public StateMachine (DifferentialPilot pilot, UltrasonicSensor ultrasonicSensor, MultableInt dir, MultableInt room_x, MultableInt room_y) {
         this.pilot = pilot;
         this.ultrasonicSensor = ultrasonicSensor;
         this.dir = dir;
@@ -63,7 +64,7 @@ class StateMachine implements Behavior {
                         minDist = Math.min(minDist, ultrasonicSensor.getDistance());
                     }
                     for (int i = 0; i < 36; i++) {
-                        if (Math.abs(ultrasonicSensor.getDistance() - minDist < 5) break;
+                        if (Math.abs(ultrasonicSensor.getDistance() - minDist) < 5) break;
                         pilot.rotate(10);
                     }
                     pilot.rotate(90);
@@ -87,15 +88,15 @@ class StateMachine implements Behavior {
                 //State 3 - Find next wall
                 case 4:
                     count++;
-                    pilot.resetTachoCount();
+                    pilot.reset();
                     
                     while (ultrasonicSensor.getDistance() > 20)
                         pilot.forward();
                     
                     if (count % 2 == 0)
-                        room_x.setValue(pilot.getMovement().getDistanceTraveled());
+                        room_x.setValue((int)pilot.getMovement().getDistanceTraveled());
                     else
-                        room_y.setValue(pilot.getMovement().getDistanceTraveled());
+                        room_y.setValue((int)pilot.getMovement().getDistanceTraveled());
                     
                     pilot.rotate(-90);
                     
@@ -106,7 +107,7 @@ class StateMachine implements Behavior {
                 //State 5 - Prepare to cover all floor area
                 case 5:
                     dir.setValue(1);
-                    pilot.resetTachoCount();
+                    pilot.reset();
                     state = 6;
                     break;
 
@@ -126,7 +127,7 @@ class NextRightLine implements Behavior {
     private DifferentialPilot pilot;
     private MultableInt room_x, room_y, dir;
     
-    public Behaviour2(DifferentialPilot pilot, MultableInt dir, MultableInt room_x, MultableInt room_y) {
+    public NextRightLine (DifferentialPilot pilot, MultableInt dir, MultableInt room_x, MultableInt room_y) {
         this.pilot = pilot;
         this.room_x = room_x;
         this.room_y = room_y;
@@ -134,7 +135,7 @@ class NextRightLine implements Behavior {
     }
     
     public boolean takeControl() {
-	    return Math.abs(room_y - pilot.getMovement().getDistanceTraveled()) < 40) && dir.getValue() == -1;
+	    return Math.abs(room_y.getValue() - pilot.getMovement().getDistanceTraveled()) < 40 && dir.getValue() == -1;
     }
 
     public void suppress() {
@@ -149,7 +150,7 @@ class NextRightLine implements Behavior {
         pilot.rotate(90);
           
         dir.setValue(1);
-        pilot.resetTachoCount();
+        pilot.reset();
                       
 	    while( !suppressed )
 		    Thread.yield();
@@ -162,7 +163,7 @@ class NextLeftLine implements Behavior {
     private DifferentialPilot pilot;
     private MultableInt room_x, room_y, dir;
     
-    public Behaviour3(DifferentialPilot pilot, MultableInt dir, MultableInt room_x, MultableInt room_y) {
+    public NextLeftLine (DifferentialPilot pilot, MultableInt dir, MultableInt room_x, MultableInt room_y) {
         this.pilot = pilot;
         this.room_x = room_x;
         this.room_y = room_y;
@@ -170,7 +171,7 @@ class NextLeftLine implements Behavior {
     }
     
     public boolean takeControl() {
-	    return Math.abs(room_y - pilot.getMovement().getDistanceTraveled()) < 40) && dir.getValue() == 1;
+	    return Math.abs(room_y.getValue() - pilot.getMovement().getDistanceTraveled()) < 40 && dir.getValue() == 1;
     }
 
     public void suppress() {
@@ -185,7 +186,7 @@ class NextLeftLine implements Behavior {
         pilot.rotate(-90);
           
         dir.setValue(1);
-        pilot.resetTachoCount();
+        pilot.reset();
                       
 	    while( !suppressed )
 		    Thread.yield();
@@ -197,9 +198,9 @@ class AvoidObstacle implements Behavior {
     private boolean suppressed = false;
     private UltrasonicSensor ultrasonicSensor;
     private DifferentialPilot pilot;
-    private const int CONST_AVOID = 15;
+    private int CONST_AVOID = 15;
     
-    public Behaviour4(DifferentialPilot pilot, UltrasonicSensor ultrasonicSensor) {
+    public AvoidObstacle (DifferentialPilot pilot, UltrasonicSensor ultrasonicSensor) {
         this.ultrasonicSensor = ultrasonicSensor;
         this.pilot = pilot;
     }
@@ -231,7 +232,7 @@ class Carpet implements Behavior {
    private boolean suppressed = false;
    
 public boolean takeControl() {
-	  return firstExec;
+	  return false;
    }
 
    public void suppress() {
@@ -247,18 +248,18 @@ public boolean takeControl() {
 }
 
 //Behaviour 6 - Colission
-class Colission implements Behavior {
+class Collision implements Behavior {
     private boolean suppressed = false;
     private TouchSensor touchSensor;
     private DifferentialPilot pilot;
    
-    public Behaviour6(DifferentialPilot pilot, TouchSensor touchSensor) {
+    public Collision (DifferentialPilot pilot, TouchSensor touchSensor) {
         this.touchSensor = touchSensor;
         this.pilot = pilot;
     }
    
     public boolean takeControl() {
-	    return firstExec;
+	    return touchSensor.isPressed();
     }
 
     public void suppress() {
@@ -269,18 +270,20 @@ class Colission implements Behavior {
 	    suppressed = false;
 
         pilot.stop();
-        exit(0);
+        System.exit(0);
 
 	    while( !suppressed )
 		    Thread.yield();
     }
 }
 
-public class Assignment1 {
+public class Assignment2 {
     public static void main (String[] args) {
     
         //Measures
-        MultableInt dir, room_x, room_y;
+        MultableInt dir = new MultableInt();
+        MultableInt room_x = new MultableInt();
+        MultableInt room_y = new MultableInt();
         
         //Sensors
         DifferentialPilot pilot = new DifferentialPilot(2.25f, 4.25f, Motor.A, Motor.B, true);
