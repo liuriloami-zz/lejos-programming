@@ -49,70 +49,42 @@ class StateMachine implements Behavior {
             //State machine
 	        switch(state) {
 
-                //State 0 - Find Wall
+
+                //State 0 - Find next wall
                 case 0:
-                    pilot.forward();
-                    if (ultrasonicSensor.getDistance() < 30)
-                        state = 1;
-                    break;
-    
-                //State 1 - Find first wall
-                case 1:
-                    int minDist = 255;
-                    for (int i = 0; i < 36; i++) {
-                        pilot.rotate(10);
-                        minDist = Math.min(minDist, ultrasonicSensor.getDistance());
-                    }
-                    for (int i = 0; i < 36; i++) {
-                        if (Math.abs(ultrasonicSensor.getDistance() - minDist) < 5) break;
-                        pilot.rotate(10);
-                    }
-                    pilot.rotate(90);
-                    state = 2;
-                    break;
-
-                //State 2 - Find edge
-                case 2:
-                    pilot.forward();
-                    if (ultrasonicSensor.getDistance() < 20)
-                        state = 3;
-                    break;
-                
-                //State 3 - Prepare for perimeter inspection
-                case 3:
-                    pilot.rotate(180);
-                    count = 0;
-                    state = 4;
-                    break;
-
-                //State 3 - Find next wall
-                case 4:
                     count++;
                     pilot.reset();
+                    pilot.forward();
+					
+                    while (ultrasonicSensor.getDistance() > 20) {
+						System.out.println(pilot.getMovement().getDistanceTraveled() + "\n");    
+					}
                     
-                    while (ultrasonicSensor.getDistance() > 20)
-                        pilot.forward();
-                    
+					System.out.println("Traveled: " + pilot.getMovement().getDistanceTraveled());
+					System.out.println("bla");
                     if (count % 2 == 0)
                         room_x.setValue((int)pilot.getMovement().getDistanceTraveled());
                     else
                         room_y.setValue((int)pilot.getMovement().getDistanceTraveled());
                     
+					System.out.println("Room X: " + room_x.getValue());
+					System.out.println("Room Y: " + room_y.getValue());
+					
                     pilot.rotate(-90);
                     
                     if (count == 4)
-                        state = 5;
+                        state = 1;
                     break;
 
-                //State 5 - Prepare to cover all floor area
-                case 5:
+                //State 1 - Prepare to cover all floor area
+                case 1:
                     dir.setValue(1);
                     pilot.reset();
-                    state = 6;
+                    state = 2;
                     break;
 
-                //State 6 - Cover room
-                case 6:
+                //State 2 - Cover room
+                case 2:
                     pilot.forward();
                     break;
             }
@@ -151,6 +123,8 @@ class NextRightLine implements Behavior {
           
         dir.setValue(1);
         pilot.reset();
+		
+		pilot.forward();
                       
 	    while( !suppressed )
 		    Thread.yield();
@@ -188,6 +162,8 @@ class NextLeftLine implements Behavior {
         dir.setValue(1);
         pilot.reset();
                       
+		pilot.forward();
+		
 	    while( !suppressed )
 		    Thread.yield();
     }
@@ -286,15 +262,12 @@ public class Assignment2 {
         MultableInt room_y = new MultableInt();
         
         //Sensors
-        DifferentialPilot pilot = new DifferentialPilot(2.25f, 4.25f, Motor.A, Motor.B, true);
-		UltrasonicSensor ultrasonicSensor = new UltrasonicSensor(SensorPort.S1);
-		TouchSensor touchSensor = new TouchSensor(SensorPort.S2);
-        LightSensor lightSensor = new LightSensor(SensorPort.S3);
+        DifferentialPilot pilot = new DifferentialPilot(2.1f, 4.4f, Motor.A, Motor.B, false);
+		UltrasonicSensor ultrasonicSensor = new UltrasonicSensor(SensorPort.S2);
+		TouchSensor touchSensor = new TouchSensor(SensorPort.S3);
+        LightSensor lightSensor = new LightSensor(SensorPort.S4);
 		pilot.setTravelSpeed(5);
 		
-		try {
-			Thread.sleep(1000);
-		} catch (Exception e){}
 		
 		//Behaviours
 		Behavior stateMachine = new StateMachine(pilot, ultrasonicSensor, dir, room_x, room_y);
@@ -304,7 +277,7 @@ public class Assignment2 {
 		Behavior carpet = new Carpet();
 		Behavior collision = new Collision(pilot, touchSensor);
 		
-		Behavior[] behaviors = {avoidObstacle, collision};
+		Behavior[] behaviors = {stateMachine, nextRightLine, nextLeftLine, avoidObstacle, carpet, collision};
 		
 		Arbitrator arby = new Arbitrator(behaviors);
 		arby.start();
