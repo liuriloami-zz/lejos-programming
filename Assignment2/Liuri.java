@@ -49,7 +49,6 @@ class StateMachine implements Behavior {
             //State machine
 	        switch(state) {
 
-
                 //State 0 - Find next wall
                 case 0:
                     count++;
@@ -59,16 +58,10 @@ class StateMachine implements Behavior {
                     while (ultrasonicSensor.getDistance() > 20) {
 						System.out.println(pilot.getMovement().getDistanceTraveled() + "\n");    
 					}
-                    
-					System.out.println("Traveled: " + pilot.getMovement().getDistanceTraveled());
-					System.out.println("bla");
                     if (count % 2 == 0)
                         room_x.setValue((int)pilot.getMovement().getDistanceTraveled());
                     else
                         room_y.setValue((int)pilot.getMovement().getDistanceTraveled());
-                    
-					System.out.println("Room X: " + room_x.getValue());
-					System.out.println("Room Y: " + room_y.getValue());
 					
                     pilot.rotate(-90);
                     
@@ -80,12 +73,12 @@ class StateMachine implements Behavior {
                 case 1:
                     dir.setValue(1);
                     pilot.reset();
+                    pilot.forward();
                     state = 2;
                     break;
 
                 //State 2 - Cover room
                 case 2:
-                    pilot.forward();
                     break;
             }
 	    }
