@@ -8,8 +8,28 @@ import lejos.nxt.*;
 import lejos.robotics.navigation.*;
 import lejos.robotics.subsumption.*;
 
+class MultableDouble {
+    private double value;
+	
+	public MultableDouble() {
+		value = 0;
+	}
+	
+    public double getValue() {
+        return value;
+    }
+    public void setValue(double value) {
+        this.value = value;
+    }
+}
+
 class MultableInt {
     private int value;
+	
+	public MultableInt() {
+		value = 0;
+	}
+	
     public int getValue() {
         return value;
     }
@@ -24,14 +44,16 @@ class StateMachine implements Behavior {
     private UltrasonicSensor ultrasonicSensor;
     private boolean suppressed = false;
     private int state = 0, count = 0;
-    private MultableInt dir, room_x, room_y;
+    private MultableInt dir;
+	private MultableDouble room_x, room_y, traveled;
 
-    public StateMachine (DifferentialPilot pilot, UltrasonicSensor ultrasonicSensor, MultableInt dir, MultableInt room_x, MultableInt room_y) {
+    public StateMachine (DifferentialPilot pilot, UltrasonicSensor ultrasonicSensor, MultableInt dir, MultableDouble room_x, MultableDouble room_y, MultableDouble traveled) {
         this.pilot = pilot;
         this.ultrasonicSensor = ultrasonicSensor;
         this.dir = dir;
         this.room_x = room_x;
         this.room_y = room_y;
+		this.traveled = traveled;
     }
 
     public boolean takeControl() {
@@ -55,13 +77,11 @@ class StateMachine implements Behavior {
                     pilot.reset();
                     pilot.forward();
 					
-                    while (ultrasonicSensor.getDistance() > 20) {
-						System.out.println(pilot.getMovement().getDistanceTraveled() + "\n");    
-					}
+                    while (ultrasonicSensor.getDistance() > 20);
                     if (count % 2 == 0)
-                        room_x.setValue((int)pilot.getMovement().getDistanceTraveled());
+                        room_x.setValue(pilot.getMovement().getDistanceTraveled());
                     else
-                        room_y.setValue((int)pilot.getMovement().getDistanceTraveled());
+                        room_y.setValue(pilot.getMovement().getDistanceTraveled());
 					
                     pilot.rotate(-90);
                     
@@ -79,6 +99,8 @@ class StateMachine implements Behavior {
 
                 //State 2 - Cover room
                 case 2:
+					traveled.setValue(traveled.getValue() + pilot.getMovement().getDistanceTraveled());
+					pilot.forward();
                     break;
             }
 	    }
@@ -90,17 +112,21 @@ class StateMachine implements Behavior {
 class NextRightLine implements Behavior {
     private boolean suppressed = false;
     private DifferentialPilot pilot;
-    private MultableInt room_x, room_y, dir;
+    private UltrasonicSensor ultrasonicSensor;
+    private MultableDouble room_x, room_y, traveled;
+	private MultableInt dir;
     
-    public NextRightLine (DifferentialPilot pilot, MultableInt dir, MultableInt room_x, MultableInt room_y) {
+    public NextRightLine (DifferentialPilot pilot, MultableInt dir, MultableDouble room_x, MultableDouble room_y, MultableDouble traveled, UltrasonicSensor ultrasonicSensor) {
         this.pilot = pilot;
         this.room_x = room_x;
         this.room_y = room_y;
+		this.traveled = traveled;
         this.dir = dir;
+		this.ultrasonicSensor = ultrasonicSensor;
     }
     
     public boolean takeControl() {
-	    return Math.abs(room_y.getValue() - pilot.getMovement().getDistanceTraveled()) < 40 && dir.getValue() == -1;
+	    return room_y.getValue() - traveled.getValue() < 10 && ultrasonicSensor.getDistance() < 20 && dir.getValue() == -1;
     }
 
     public void suppress() {
@@ -109,18 +135,13 @@ class NextRightLine implements Behavior {
 
     public void action() {
 	    suppressed = false;
+        dir.setValue(1);
         
         pilot.rotate(90);
         pilot.travel(7);
         pilot.rotate(90);
-          
-        dir.setValue(1);
-        pilot.reset();
 		
-		pilot.forward();
-                      
-	    while( !suppressed )
-		    Thread.yield();
+		traveled.setValue(0);
     }
 }
 
@@ -128,17 +149,21 @@ class NextRightLine implements Behavior {
 class NextLeftLine implements Behavior {
     private boolean suppressed = false;
     private DifferentialPilot pilot;
-    private MultableInt room_x, room_y, dir;
+    private UltrasonicSensor ultrasonicSensor;
+    private MultableDouble room_x, room_y, traveled;
+	private MultableInt dir;
     
-    public NextLeftLine (DifferentialPilot pilot, MultableInt dir, MultableInt room_x, MultableInt room_y) {
+    public NextLeftLine (DifferentialPilot pilot, MultableInt dir, MultableDouble room_x, MultableDouble room_y, MultableDouble traveled, UltrasonicSensor ultrasonicSensor) {
         this.pilot = pilot;
         this.room_x = room_x;
         this.room_y = room_y;
+		this.traveled = traveled;
         this.dir = dir;
+		this.ultrasonicSensor = ultrasonicSensor;
     }
     
     public boolean takeControl() {
-	    return Math.abs(room_y.getValue() - pilot.getMovement().getDistanceTraveled()) < 40 && dir.getValue() == 1;
+	    return room_y.getValue() - traveled.getValue() < 10 && ultrasonicSensor.getDistance() < 20 && dir.getValue() == 1;
     }
 
     public void suppress() {
@@ -147,18 +172,13 @@ class NextLeftLine implements Behavior {
 
     public void action() {
 	    suppressed = false;
+        dir.setValue(-1);
         
         pilot.rotate(-90);
         pilot.travel(7);
         pilot.rotate(-90);
-          
-        dir.setValue(1);
-        pilot.reset();
-                      
-		pilot.forward();
 		
-	    while( !suppressed )
-		    Thread.yield();
+		traveled.setValue(0);
     }
 }
 
@@ -168,14 +188,17 @@ class AvoidObstacle implements Behavior {
     private UltrasonicSensor ultrasonicSensor;
     private DifferentialPilot pilot;
     private int CONST_AVOID = 15;
-    
-    public AvoidObstacle (DifferentialPilot pilot, UltrasonicSensor ultrasonicSensor) {
+    private MultableDouble room_y, traveled;
+	
+    public AvoidObstacle (DifferentialPilot pilot, UltrasonicSensor ultrasonicSensor, MultableDouble room_y, MultableDouble traveled) {
         this.ultrasonicSensor = ultrasonicSensor;
         this.pilot = pilot;
+		this.room_y = room_y;
+		this.traveled = traveled;
     }
    
     public boolean takeControl() {
-	    return ultrasonicSensor.getDistance() < 20;
+	    return room_y.getValue() - traveled.getValue() > 10 && ultrasonicSensor.getDistance() < 20;
     }
 
     public void suppress() {
@@ -189,19 +212,30 @@ class AvoidObstacle implements Behavior {
         pilot.travel(CONST_AVOID);
         pilot.rotate(-90);
         pilot.travel(CONST_AVOID);
+		traveled.setValue(traveled.getValue()+1.4*(CONST_AVOID));
         pilot.rotate(45);
-
-	    while( !suppressed )
-		    Thread.yield();
     }
 }
 
-//Behaviour 5 - Carpet - TODO
+//Behaviour 5 - Carpet
 class Carpet implements Behavior {
    private boolean suppressed = false;
+   private LightSensor lightSensor;
+   int oldValue;
+   boolean inCarpet = false;
    
-public boolean takeControl() {
-	  return false;
+	public boolean takeControl() {
+		int newValue = this.lightSensor.readNormalizedValue();
+        int dif = Math.abs(oldValue - newValue);
+        oldValue = newValue;
+		if (dif > 100)
+			action();
+		return false;
+   }
+   
+   public Carpet(LightSensor lightSensor) {
+       this.lightSensor = lightSensor;
+	   this.oldValue = this.lightSensor.readNormalizedValue();
    }
 
    public void suppress() {
@@ -209,10 +243,12 @@ public boolean takeControl() {
    }
 
    public void action() {
-	 suppressed = false;
-
-	 while( !suppressed )
-		Thread.yield();
+	 inCarpet = !inCarpet;
+	 if (inCarpet) {
+		System.out.println("Carpet!");
+	 } else {
+		LCD.clear();
+	 }
    }
 }
 
@@ -251,8 +287,9 @@ public class Assignment2 {
     
         //Measures
         MultableInt dir = new MultableInt();
-        MultableInt room_x = new MultableInt();
-        MultableInt room_y = new MultableInt();
+        MultableDouble room_x = new MultableDouble();
+        MultableDouble room_y = new MultableDouble();
+		MultableDouble traveled = new MultableDouble();
         
         //Sensors
         DifferentialPilot pilot = new DifferentialPilot(2.1f, 4.4f, Motor.A, Motor.B, false);
@@ -263,11 +300,11 @@ public class Assignment2 {
 		
 		
 		//Behaviours
-		Behavior stateMachine = new StateMachine(pilot, ultrasonicSensor, dir, room_x, room_y);
-		Behavior nextRightLine = new NextRightLine(pilot, dir, room_x, room_y);
-		Behavior nextLeftLine = new NextLeftLine(pilot, dir, room_x, room_y);
-		Behavior avoidObstacle = new AvoidObstacle(pilot, ultrasonicSensor);
-		Behavior carpet = new Carpet();
+		Behavior stateMachine = new StateMachine(pilot, ultrasonicSensor, dir, room_x, room_y, traveled);
+		Behavior nextRightLine = new NextRightLine(pilot, dir, room_x, room_y, traveled, ultrasonicSensor);
+		Behavior nextLeftLine = new NextLeftLine(pilot, dir, room_x, room_y, traveled, ultrasonicSensor);
+		Behavior avoidObstacle = new AvoidObstacle(pilot, ultrasonicSensor, room_y, traveled);
+		Behavior carpet = new Carpet(lightSensor);
 		Behavior collision = new Collision(pilot, touchSensor);
 		
 		Behavior[] behaviors = {stateMachine, nextRightLine, nextLeftLine, avoidObstacle, carpet, collision};
