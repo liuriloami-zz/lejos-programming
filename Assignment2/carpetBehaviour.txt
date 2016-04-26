@@ -1,0 +1,35 @@
+//Behaviour 5 - Carpet - TODO
+class Carpet implements Behavior {
+   private boolean suppressed = false;
+   private LightSensor lightSensor;
+   int oldValue;
+   boolean inCarpet = false;
+   
+	public boolean takeControl() {
+		int newValue = this.lightSensor.readNormalizedValue();
+        int dif = Math.abs(oldValue - newValue );
+        oldValue = newValue;
+		return dif>300 ? true : false;
+   }
+   public void Carpet(LightSensor lightSensor) {
+       this.lightSensor = lightSensor;
+	   this.oldValue = this.lightSensor.readNormalizedValue();
+   }
+
+   public void suppress() {
+	  suppressed = true;
+   }
+
+   public void action() {
+	 suppressed = false;
+	 inCarpet = !inCarpet;
+	 if(inCarpet){
+		System.out.println("Carpet!");
+	 }else{
+		LCD.clear();
+	 }
+
+	 while( !suppressed )
+		Thread.yield();
+   }
+}
